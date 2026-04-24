@@ -37,6 +37,7 @@ import {
   X,
   Menu,
   LogOut,
+  Bell,
   MessageSquare,
   Wallet,
   BookOpen,
@@ -56,6 +57,7 @@ import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'react-hot-toast';
 import { supabase } from './supabase';
 import Auth from './components/Auth';
+import { registerPushNotifications } from './notifications';
 import { fetchDashPrice, fetchDashHistory, fetchNews, type DashData, type ChartPoint, type NewsItem, type AnalysisReport } from './api';
 import { analyzeMarket, chatWithPulse } from './geminiService';
 
@@ -100,6 +102,17 @@ export default function App() {
   const [isChatting, setIsChatting] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSubmittingPush, setIsSubmittingPush] = useState(false);
+
+  const handlePushRegistration = async () => {
+    if (!session?.user) return;
+    setIsSubmittingPush(true);
+    const success = await registerPushNotifications(session.user.id);
+    if (success) {
+      toast.success('Push Pulse Activated');
+    }
+    setIsSubmittingPush(false);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -135,12 +148,26 @@ export default function App() {
     }
   }, []);
 
+  const [lastSignal, setLastSignal] = useState<string | null>(null);
+
   const runAnalysis = async () => {
     if (!data || history.length === 0) return;
     setIsAnalyzing(true);
     try {
       const report = await analyzeMarket(data, history, news);
       setAnalysis(report);
+
+      // Notify on signal change
+      if (report.recommendation !== lastSignal) {
+        if (Notification.permission === 'granted') {
+          new Notification('DashPulse Signal Change', {
+            body: `Recommendation changed to ${report.recommendation}: ${report.predictive}`,
+            icon: '/favicon.ico'
+          });
+        }
+        setLastSignal(report.recommendation);
+      }
+
       toast.success('Market Intelligence Updated', {
         style: { background: '#121214', color: '#fff', border: '1px solid #333' }
       });
@@ -386,6 +413,14 @@ export default function App() {
               className="lg:hidden p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400"
             >
               <Menu className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={handlePushRegistration}
+              disabled={isSubmittingPush}
+              className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-[#008CE7]/10 hover:border-[#008CE7]/30 text-zinc-500 hover:text-[#008CE7] transition-all disabled:opacity-50"
+              title="Enable Pulse Notifications"
+            >
+              <Bell className={cn("w-5 h-5", isSubmittingPush && "animate-ping")} />
             </button>
             <button 
               onClick={() => supabase.auth.signOut()}
@@ -839,10 +874,19 @@ export default function App() {
               className="max-w-6xl mx-auto space-y-6"
             >
               {/* Portfolio Header */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl group hover:border-[#008CE7]/40 transition-all">
+                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Live Node Price</p>
+                   <p className={cn(
+                     "text-3xl font-black tabular-nums transition-colors",
+                     isPositive ? "text-emerald-400" : "text-red-400"
+                   )}>
+                     ${data?.price.toFixed(2)}
+                   </p>
+                </div>
                 <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Available Credits</p>
-                   <p className="text-3xl font-black text-[#008CE7] tabular-nums underline decoration-[#008CE7]/30 decoration-4 underline-offset-8">
+                   <p className="text-3xl font-black text-[#008CE7] tabular-nums">
                      ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                    </p>
                 </div>
@@ -854,7 +898,7 @@ export default function App() {
                    </div>
                 </div>
                 <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
-                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Net Performance</p>
+                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Performance</p>
                    <p className={cn(
                      "text-3xl font-black tabular-nums",
                      (balance + (holdings * (data?.price ?? 0))) >= 10000 ? "text-emerald-400" : "text-red-400"
