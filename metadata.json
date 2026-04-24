@@ -1,0 +1,6 @@
+{
+  "name": "DashPulse",
+  "description": "Real-time DASH-USD price tracking and historical analysis dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

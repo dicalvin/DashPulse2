@@ -1,0 +1,17 @@
+{
+  "name": "DashPulse AI",
+  "short_name": "DashPulse",
+  "description": "AI-Powered DASH/USD Financial Analysis",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#008CE7",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/neon/512/000000/lightning-bolt.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
