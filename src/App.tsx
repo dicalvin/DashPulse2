@@ -34,6 +34,9 @@ import {
   Sparkles,
   Info,
   CircleDot,
+  X,
+  Menu,
+  LogOut,
   MessageSquare,
   Wallet,
   BookOpen,
@@ -51,6 +54,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Toaster, toast } from 'react-hot-toast';
+import { supabase } from './supabase';
+import Auth from './components/Auth';
 import { fetchDashPrice, fetchDashHistory, fetchNews, type DashData, type ChartPoint, type NewsItem, type AnalysisReport } from './api';
 import { analyzeMarket, chatWithPulse } from './geminiService';
 
@@ -72,6 +77,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function App() {
+  const [session, setSession] = useState<any>(null);
+  const [userLoading, setUserLoading] = useState(true);
   const [data, setData] = useState<DashData | null>(null);
   const [history, setHistory] = useState<ChartPoint[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -92,6 +99,18 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUserLoading(false);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+  }, []);
 
   const fetchData = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
@@ -209,6 +228,18 @@ export default function App() {
 
   const isPositive = (data?.changePercent24h ?? 0) >= 0;
 
+  if (userLoading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Activity className="w-10 h-10 text-[#008CE7] animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
     <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-[#008CE7]/30 overflow-x-hidden">
       {/* Immersive Background */}
@@ -253,6 +284,19 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => supabase.auth.signOut()}
+              className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-red-500/10 hover:border-red-500/30 text-zinc-500 hover:text-red-400 transition-all"
+              title="Logout Node"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
             <div className="hidden sm:flex items-center gap-3 px-4 py-2 border border-zinc-800/50 rounded-xl bg-zinc-900/30">
               <div className="flex flex-col items-end">
                 <span className="text-[10px] font-mono text-zinc-500 leading-none mb-1 uppercase tracking-tighter">Live Feed</span>
@@ -270,6 +314,58 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: -100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            className="fixed inset-0 z-[70] lg:hidden"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+            <motion.div className="absolute top-0 left-0 bottom-0 w-72 bg-zinc-900 border-r border-zinc-800 p-6 flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-[#008CE7]" />
+                  <span className="font-black italic uppercase tracking-tighter">DashPulse</span>
+                </div>
+                <button onClick={() => setIsMenuOpen(false)}>
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
+              </div>
+              <nav className="flex flex-col gap-2">
+                {(['overview', 'analysis', 'news', 'simulator', 'learn'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => { setActiveTab(tab); setIsMenuOpen(false); }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                      activeTab === tab ? "bg-[#008CE7] text-white shadow-lg" : "text-zinc-500 hover:bg-zinc-800/50"
+                    )}
+                  >
+                    {tab === 'overview' && <Activity className="w-4 h-4" />}
+                    {tab === 'analysis' && <BrainCircuit className="w-4 h-4" />}
+                    {tab === 'news' && <Newspaper className="w-4 h-4" />}
+                    {tab === 'simulator' && <TrendingUpDown className="w-4 h-4" />}
+                    {tab === 'learn' && <BookOpen className="w-4 h-4" />}
+                    {tab}
+                  </button>
+                ))}
+              </nav>
+              <div className="mt-auto pt-6 border-t border-zinc-800">
+                <button 
+                  onClick={() => supabase.auth.signOut()}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-red-500 font-bold text-[10px] uppercase tracking-[0.2em]"
+                >
+                  <LogOut className="w-4 h-4" /> Sign Out Node
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10 relative z-10">
         <AnimatePresence mode="wait">
@@ -641,107 +737,230 @@ export default function App() {
           {activeTab === 'simulator' && (
             <motion.div
               key="simulator"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto space-y-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="h-[calc(100vh-140px)] -mt-10 -mx-6 lg:-mx-12 flex flex-col lg:flex-row bg-[#0b0e11] text-[#eaecef]"
             >
-               <div className="flex items-center justify-between border-b border-zinc-800 pb-8">
-                  <div className="space-y-2">
-                     <h2 className="text-4xl font-black italic tracking-tighter uppercase">Paper Trading Terminal</h2>
-                     <p className="text-zinc-500 text-sm">Risk-free execution environment using real-time market nodes.</p>
+              {/* Left Sidebar: Order Book (Simulated) */}
+              <div className="w-full lg:w-64 border-r border-zinc-800 flex flex-col shrink-0">
+                <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">Order Book</span>
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-sm bg-emerald-500 opacity-50" />
+                    <div className="w-2 h-2 rounded-sm bg-red-500 opacity-50" />
                   </div>
-                  <div className="text-right">
-                     <p className="text-[11px] font-mono text-zinc-600 uppercase tracking-[0.2em] mb-2">Available USD Credits</p>
-                     <div className="text-4xl font-black text-[#008CE7] tabular-nums">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {/* Sells */}
+                  <div className="flex-1 px-4 py-2 space-y-0.5 overflow-hidden font-mono text-[10px]">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="flex justify-between relative">
+                        <span className="text-[#f6465d] relative z-10">{(data?.price ?? 0 + (i * 0.05)).toFixed(2)}</span>
+                        <span className="text-[#eaecef] relative z-10">{(Math.random() * 50).toFixed(2)}</span>
+                        <div className="absolute right-0 top-0 bottom-0 bg-[#f6465d]/10" style={{ width: `${Math.random() * 80}%` }} />
+                      </div>
+                    ))}
                   </div>
-               </div>
-
-               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  <div className="lg:col-span-4 space-y-6">
-                     <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2rem] space-y-8">
-                        <div className="space-y-4">
-                           <h3 className="text-xs font-black uppercase text-zinc-500 tracking-[0.2em] mb-4">Market Execution</h3>
-                           <div className="space-y-2">
-                              <div className="flex justify-between text-xs mb-1">
-                                 <span className="text-zinc-500">Asset</span>
-                                 <span className="text-white">DASH / USD</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                 <span className="text-zinc-500">Node Price</span>
-                                 <span className="text-white font-mono">${data?.price.toFixed(4)}</span>
-                              </div>
-                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                           <button 
-                             onClick={() => handleTrade('BUY')}
-                             className="py-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl font-black italic hover:bg-emerald-500 hover:text-white transition-all uppercase"
-                           >
-                             BUY DASH
-                           </button>
-                           <button 
-                             onClick={() => handleTrade('SELL')}
-                             className="py-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl font-black italic hover:bg-red-500 hover:text-white transition-all uppercase"
-                           >
-                             SELL DASH
-                           </button>
-                        </div>
-
-                        <div className="p-4 bg-zinc-800/50 rounded-2xl space-y-4 border border-zinc-800/50">
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center">
-                                 <Wallet className="w-4 h-4 text-[#008CE7]" />
-                              </div>
-                              <div>
-                                 <p className="text-[10px] text-zinc-500 uppercase font-mono leading-none mb-1">Portfolio Position</p>
-                                 <p className="text-sm font-bold text-white italic">{holdings.toFixed(4)} DASH</p>
-                              </div>
-                           </div>
-                           <div className="flex justify-between items-center text-xs">
-                              <span className="text-zinc-500">Current Value</span>
-                              <span className="text-white font-bold">${((data?.price ?? 0) * holdings).toFixed(2)}</span>
-                           </div>
-                        </div>
-                     </div>
+                  {/* Current Price */}
+                  <div className="px-4 py-3 bg-zinc-900 flex flex-col items-center justify-center border-y border-zinc-800">
+                    <span className={cn("text-lg font-black italic", isPositive ? "text-[#0ecb81]" : "text-[#f6465d]")}>
+                      ${data?.price.toFixed(2)}
+                    </span>
+                    <span className="text-[10px] text-zinc-500">Last Node Update</span>
                   </div>
-
-                  <div className="lg:col-span-8">
-                     <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
-                        <div className="p-6 border-b border-zinc-800 bg-zinc-900/50 flex items-center gap-3">
-                           <History className="w-5 h-5 text-zinc-500" />
-                           <h3 className="text-xs font-black uppercase tracking-widest">Global Order History</h3>
-                        </div>
-                        <div className="divide-y divide-zinc-800 max-h-[500px] overflow-y-auto">
-                           {tradeHistory.length === 0 ? (
-                              <div className="p-20 text-center space-y-4">
-                                 <CircleDot className="w-12 h-12 text-zinc-800 mx-auto animate-pulse" />
-                                 <p className="text-zinc-600 text-sm font-mono tracking-widest uppercase">No verified transactions locally stored</p>
-                              </div>
-                           ) : tradeHistory.map((trade) => (
-                              <div key={trade.id} className="p-6 flex items-center justify-between group hover:bg-white/5 transition-colors">
-                                 <div className="flex items-center gap-6">
-                                    <div className={cn(
-                                       "w-12 h-12 rounded-xl flex items-center justify-center font-black",
-                                       trade.type === 'BUY' ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-                                    )}>
-                                       {trade.type[0]}
-                                    </div>
-                                    <div>
-                                       <p className="font-bold text-sm tracking-tight">{trade.type} {trade.amount.toFixed(4)} DASH</p>
-                                       <p className="text-[10px] font-mono text-zinc-500 uppercase">{format(trade.time, 'HH:mm:ss MMM d')}</p>
-                                    </div>
-                                 </div>
-                                 <div className="text-right">
-                                    <p className="text-sm font-mono text-zinc-300 font-bold italic">${trade.price.toFixed(2)}</p>
-                                    <p className="text-[9px] text-zinc-600 font-mono uppercase">Avg Execution Price</p>
-                                 </div>
-                              </div>
-                           ))}
-                        </div>
-                     </div>
+                  {/* Buys */}
+                  <div className="flex-1 px-4 py-2 space-y-0.5 overflow-hidden font-mono text-[10px]">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="flex justify-between relative">
+                        <span className="text-[#0ecb81] relative z-10">{(data?.price ?? 0 - (i * 0.05)).toFixed(2)}</span>
+                        <span className="text-[#eaecef] relative z-10">{(Math.random() * 50).toFixed(2)}</span>
+                        <div className="absolute left-0 top-0 bottom-0 bg-[#0ecb81]/10" style={{ width: `${Math.random() * 80}%` }} />
+                      </div>
+                    ))}
                   </div>
-               </div>
+                </div>
+              </div>
+
+              {/* Main Content: Chart + History */}
+              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                <div className="flex-1 min-h-[300px] border-b border-zinc-800 p-4">
+                  <div className="flex items-center gap-6 mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-zinc-500 uppercase font-bold">DASH/USDT</span>
+                      <span className="text-lg font-black text-[#fcd535] italic">DASHPROBE.LIVE</span>
+                    </div>
+                    <div className="flex gap-6">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-zinc-500 uppercase">24h Change</span>
+                        <span className={cn("text-xs font-bold", isPositive ? "text-[#0ecb81]" : "text-[#f6465d]")}>
+                          {isPositive ? '+' : ''}{data?.changePercent24h.toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-zinc-500 uppercase">24h High</span>
+                        <span className="text-xs font-bold">{(data?.price ?? 0 * 1.05).toFixed(2)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-zinc-500 uppercase">24h Low</span>
+                        <span className="text-xs font-bold">{(data?.price ?? 0 * 0.95).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Reuse Chart with more technical style */}
+                  <div className="h-[calc(100%-60px)]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={history}>
+                        <defs>
+                          <linearGradient id="binanceGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#fcd535" stopOpacity={0.1}/>
+                            <stop offset="95%" stopColor="#fcd535" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <XAxis 
+                          dataKey="displayTime" 
+                          stroke="#474d57" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          interval={Math.floor(history.length / 6)}
+                        />
+                        <YAxis 
+                          domain={['auto', 'auto']} 
+                          orientation="right"
+                          stroke="#474d57" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(val) => val.toFixed(2)}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e2329', border: 'none', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+                          itemStyle={{ color: '#eaecef', fontSize: '11px', fontWeight: 'bold' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke="#fcd535" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#binanceGradient)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Account & History */}
+                <div className="h-64 flex flex-col p-4 bg-[#161a1e]">
+                  <div className="flex items-center gap-4 border-b border-zinc-800 pb-2 mb-4">
+                     <button className="text-xs font-bold text-[#fcd535] border-b-2 border-[#fcd535] pb-2">Order History</button>
+                     <button className="text-xs font-bold text-zinc-500 pb-2">Trade History</button>
+                     <button className="text-xs font-bold text-zinc-500 pb-2">Funds</button>
+                  </div>
+                  <div className="flex-1 overflow-auto scrollbar-thin">
+                    <table className="w-full text-[10px] font-mono">
+                       <thead className="sticky top-0 bg-[#161a1e] text-zinc-500 uppercase">
+                          <tr>
+                             <th className="text-left pb-2">Time</th>
+                             <th className="text-left pb-2">Type</th>
+                             <th className="text-right pb-2">Price</th>
+                             <th className="text-right pb-2">Amount</th>
+                             <th className="text-right pb-2">Total</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-zinc-800/30">
+                          {tradeHistory.map((trade) => (
+                             <tr key={trade.id} className="hover:bg-white/5">
+                                <td className="py-2 text-zinc-500">{format(trade.time, 'MM-dd HH:mm:ss')}</td>
+                                <td className={cn("py-2 font-bold", trade.type === 'BUY' ? "text-[#0ecb81]" : "text-[#f6465d]")}>{trade.type}</td>
+                                <td className="py-2 text-right">${trade.price.toFixed(2)}</td>
+                                <td className="py-2 text-right">{trade.amount.toFixed(4)} DASH</td>
+                                <td className="py-2 text-right">${(trade.price * trade.amount).toFixed(2)}</td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Sidebar: Execution Panel */}
+              <div className="w-full lg:w-80 border-l border-zinc-800 p-6 flex flex-col gap-6 shrink-0 bg-[#1e2329]">
+                 <div className="flex border-b border-zinc-800 pb-2 gap-4">
+                    <button className="text-xs font-bold text-[#fcd535]">Market</button>
+                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300">Limit</button>
+                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300">Stop-limit</button>
+                 </div>
+
+                 <div className="space-y-4">
+                    <div className="flex justify-between text-[11px]">
+                       <span className="text-zinc-500">Available</span>
+                       <span className="text-white font-bold">{balance.toFixed(2)} USDT</span>
+                    </div>
+
+                    <div className="space-y-4">
+                       <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Price</span>
+                          <input 
+                            readOnly 
+                            value={data?.price.toFixed(2)}
+                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-xs font-bold focus:border-[#fcd535] outline-none" 
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">USDT</span>
+                       </div>
+
+                       <div className="space-y-1">
+                          <button 
+                            onClick={() => handleTrade('BUY')}
+                            className="w-full py-3 bg-[#0ecb81] hover:bg-[#0bbd77] text-white rounded font-bold text-xs uppercase"
+                          >
+                            Buy DASH
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4 mt-4">
+                    <div className="flex justify-between text-[11px]">
+                       <span className="text-zinc-500">Available</span>
+                       <span className="text-white font-bold">{holdings.toFixed(4)} DASH</span>
+                    </div>
+
+                    <div className="space-y-4">
+                       <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Amount</span>
+                          <input 
+                            readOnly 
+                            value={holdings.toFixed(4)}
+                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-xs font-bold focus:border-[#fcd535] outline-none" 
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">DASH</span>
+                       </div>
+
+                       <div className="space-y-1">
+                          <button 
+                            onClick={() => handleTrade('SELL')}
+                            className="w-full py-3 bg-[#f6465d] hover:bg-[#eb4057] text-white rounded font-bold text-xs uppercase"
+                          >
+                            Sell DASH
+                          </button>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="mt-auto pt-6 border-t border-zinc-800 space-y-4">
+                    <div className="flex items-center gap-2">
+                       <ShieldAlert className="w-4 h-4 text-[#fcd535]" />
+                       <span className="text-[10px] text-zinc-500 italic">Paper Trading Mode Active</span>
+                    </div>
+                    <div className="p-3 bg-[#fcd535]/5 rounded border border-[#fcd535]/10">
+                       <p className="text-[9px] text-[#fcd535] leading-relaxed">
+                         Global market node execution simulation. All trades are finalized in local node memory for strategic analysis.
+                       </p>
+                    </div>
+                 </div>
+              </div>
             </motion.div>
           )}
 
@@ -830,7 +1049,7 @@ export default function App() {
                   onClick={() => setIsChatOpen(false)}
                   className="p-2 hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
                 >
-                   <ChevronRight className="w-5 h-5 rotate-90" />
+                   <X className="w-5 h-5" />
                 </button>
              </header>
 

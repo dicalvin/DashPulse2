@@ -10,9 +10,10 @@ let genAI: GoogleGenAI | null = null;
 
 function getGenAI() {
   if (!genAI) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not defined in environment variables");
+      console.warn("GEMINI_API_KEY is not defined. AI features will be limited.");
+      return null;
     }
     genAI = new GoogleGenAI({ apiKey });
   }
@@ -24,6 +25,16 @@ export async function analyzeMarket(
   history: ChartPoint[], 
   news: NewsItem[]
 ): Promise<AnalysisReport> {
+  const ai = getGenAI();
+  if (!ai) {
+    return {
+      descriptive: "Intelligence node offline. Please configure environment variables.",
+      diagnostic: "Connection failed.",
+      predictive: "Unable to calculate vectors.",
+      prescriptive: "Check node status.",
+      recommendation: "HOLD"
+    };
+  }
   const prompt = `
     Analyze the following market data for DASH/USD and provide a comprehensive financial report in JSON format.
     
@@ -92,6 +103,9 @@ export async function chatWithPulse(
   marketData: DashData,
   history: any[]
 ): Promise<string> {
+  const ai = getGenAI();
+  if (!ai) return "AI Core is currently offline. Please verify deployment configuration.";
+
   const prompt = `
     You are DashPulse AI, a professional trading assistant for DASH/USD.
     Current Price: $${marketData.price}
