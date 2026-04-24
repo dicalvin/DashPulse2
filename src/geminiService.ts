@@ -6,7 +6,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { type DashData, type AnalysisReport, type NewsItem, type ChartPoint } from "./api";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let genAI: GoogleGenAI | null = null;
+
+function getGenAI() {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not defined in environment variables");
+    }
+    genAI = new GoogleGenAI({ apiKey });
+  }
+  return genAI;
+}
 
 export async function analyzeMarket(
   data: DashData, 
@@ -39,6 +50,7 @@ export async function analyzeMarket(
   `;
 
   try {
+    const ai = getGenAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
@@ -92,6 +104,7 @@ export async function chatWithPulse(
   `;
 
   try {
+    const ai = getGenAI();
     const result = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt
