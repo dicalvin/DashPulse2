@@ -834,221 +834,143 @@ export default function App() {
           {activeTab === 'simulator' && (
             <motion.div
               key="simulator"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="h-[calc(100vh-140px)] -mt-10 -mx-4 sm:-mx-6 lg:-mx-12 flex flex-col lg:flex-row bg-[#0b0e11] text-[#eaecef] overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-6xl mx-auto space-y-6"
             >
-              {/* Left Sidebar: Order Book (Hidden on mobile) */}
-              <div className="hidden xl:flex w-64 border-r border-zinc-800 flex-col shrink-0">
-                <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">Order Book</span>
+              {/* Portfolio Header */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
+                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Available Credits</p>
+                   <p className="text-3xl font-black text-[#008CE7] tabular-nums underline decoration-[#008CE7]/30 decoration-4 underline-offset-8">
+                     ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                   </p>
                 </div>
-                <div className="flex-1 overflow-hidden flex flex-col font-mono text-[10px]">
-                  <div className="flex-1 px-4 py-2 space-y-0.5 overflow-hidden">
-                    {[...Array(15)].map((_, i) => (
-                      <div key={i} className="flex justify-between relative">
-                        <span className="text-[#f6465d] relative z-10">{(data?.price ?? 0 + (i * 0.05)).toFixed(2)}</span>
-                        <span className="text-zinc-400 relative z-10">{(Math.random() * 50).toFixed(2)}</span>
-                        <div className="absolute right-0 top-0 bottom-0 bg-[#f6465d]/5" style={{ width: `${Math.random() * 80}%` }} />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-4 py-3 bg-[#1e2329] border-y border-zinc-800 text-center">
-                    <span className={cn("text-lg font-black", isPositive ? "text-[#0ecb81]" : "text-[#f6465d]")}>
-                      ${data?.price.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex-1 px-4 py-2 space-y-0.5 overflow-hidden">
-                    {[...Array(15)].map((_, i) => (
-                      <div key={i} className="flex justify-between relative">
-                        <span className="text-[#0ecb81] relative z-10">{(data?.price ?? 0 - (i * 0.05)).toFixed(2)}</span>
-                        <span className="text-zinc-400 relative z-10">{(Math.random() * 50).toFixed(2)}</span>
-                        <div className="absolute right-0 top-0 bottom-0 bg-[#0ecb81]/5" style={{ width: `${Math.random() * 80}%` }} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Content: Portfolio (Real-time tracking) + Chart */}
-              <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-                {/* Real-time Portfolio Header (Mobile Optimized) */}
-                <div className="bg-[#161a20] p-4 lg:p-6 border-b border-zinc-800 shrink-0">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Total Assets</p>
-                      <p className="text-xl font-black text-[#fcd535] tabular-nums">
-                        ${(balance + (holdings * (data?.price ?? 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Holdings</p>
-                      <p className="text-xl font-black text-white tabular-nums">{holdings.toFixed(4)} <span className="text-xs text-zinc-500 italic">DASH</span></p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Wallet USDT</p>
-                      <p className="text-xl font-black text-[#0ecb81] tabular-nums">${balance.toFixed(2)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Profit/Loss</p>
-                      <p className={cn(
-                        "text-xl font-black tabular-nums",
-                        (balance + (holdings * (data?.price ?? 0))) >= 10000 ? "text-[#0ecb81]" : "text-[#f6465d]"
-                      )}>
-                        {(((balance + (holdings * (data?.price ?? 0))) - 10000) / 100).toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-hidden relative">
-                   <div className="absolute inset-0 p-4">
-                      {/* Technical Chart */}
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={history}>
-                          <defs>
-                            <linearGradient id="binanceGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#fcd535" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#fcd535" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <XAxis hide dataKey="displayTime" />
-                          <YAxis hide domain={['auto', 'auto']} />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1e2329', border: 'none', borderRadius: '8px' }}
-                            itemStyle={{ color: '#eaecef', fontSize: '11px' }}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="price" 
-                            stroke="#fcd535" 
-                            strokeWidth={2}
-                            fillOpacity={1} 
-                            fill="url(#binanceGradient)" 
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
+                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">DASH Holdings</p>
+                   <div className="flex items-baseline gap-2">
+                     <p className="text-3xl font-black text-white tabular-nums">{holdings.toFixed(4)}</p>
+                     <span className="text-xs text-zinc-600 font-bold italic">DASH</span>
                    </div>
                 </div>
-
-                {/* History (Always visible but compact on mobile) */}
-                <div className="h-48 lg:h-64 border-t border-zinc-800 bg-[#161a1e] flex flex-col shrink-0">
-                  <div className="px-6 py-3 border-b border-zinc-800 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">Transaction Node Log</span>
-                    <History className="w-3 h-3 text-zinc-700" />
-                  </div>
-                  <div className="flex-1 overflow-y-auto font-mono text-[10px] scrollbar-thin">
-                    <table className="w-full text-left">
-                       <thead className="text-zinc-600 border-b border-zinc-800/10 h-10 sticky top-0 bg-[#161a1e] z-10 px-6">
-                          <tr>
-                             <th className="pl-6">TIME</th>
-                             <th>TYPE</th>
-                             <th>PRICE</th>
-                             <th className="pr-6 text-right">TOTAL</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-zinc-800/20">
-                          {tradeHistory.map((trade) => (
-                             <tr key={trade.id} className="hover:bg-white/5 h-10">
-                                <td className="pl-6 text-zinc-500">{format(trade.time, 'HH:mm:ss')}</td>
-                                <td className={cn("font-bold", trade.type === 'BUY' ? "text-[#0ecb81]" : "text-[#f6465d]")}>{trade.type}</td>
-                                <td>${trade.price.toFixed(2)}</td>
-                                <td className="pr-6 text-right text-zinc-300 font-bold">${(trade.price * trade.amount).toFixed(2)}</td>
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                  </div>
+                <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl">
+                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Net Performance</p>
+                   <p className={cn(
+                     "text-3xl font-black tabular-nums",
+                     (balance + (holdings * (data?.price ?? 0))) >= 10000 ? "text-emerald-400" : "text-red-400"
+                   )}>
+                     {((((balance + (holdings * (data?.price ?? 0))) - 10000) / 10000) * 100).toFixed(2)}%
+                   </p>
                 </div>
               </div>
 
-              {/* Right Sidebar: Quick Trading Panel */}
-              <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-zinc-800 p-6 flex flex-col gap-6 shrink-0 bg-[#1e2329] z-20">
-                 <div className="flex bg-[#2b3139] p-1 rounded">
-                    <button className="flex-1 py-1.5 text-xs font-black bg-[#161a1e] text-[#fcd535] rounded">Spot</button>
-                    <button className="flex-1 py-1.5 text-xs font-bold text-zinc-500">Cross 3x</button>
-                 </div>
-
-                 {/* BUY SECTION */}
-                 <div className="space-y-3">
-                    <div className="flex justify-between text-[11px] font-bold text-zinc-500">
-                       <span>Available</span>
-                       <span className="text-white">${balance.toFixed(2)} <span className="text-zinc-600">USDT</span></span>
-                    </div>
-                    <div className="relative group">
-                       <input 
-                         type="number"
-                         value={buyAmount}
-                         onChange={(e) => setBuyAmount(e.target.value)}
-                         placeholder="Spend Amount"
-                         className="w-full h-10 bg-[#2b3139] border border-transparent group-focus-within:border-[#fcd535]/50 rounded px-3 text-sm font-bold outline-none transition-all"
-                       />
-                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-500">USDT</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                       {[25, 50, 75, 100].map(p => (
-                          <button 
-                            key={p} 
-                            onClick={() => setBuyAmount((balance * (p/100)).toFixed(2))}
-                            className="py-1 bg-[#2b3139] hover:bg-[#323a45] rounded text-[9px] font-bold text-zinc-500 transition-colors"
-                          >
-                            {p}%
-                          </button>
-                       ))}
-                    </div>
-                    <button 
-                      onClick={() => handleTrade('BUY')}
-                      className="w-full h-10 bg-[#0ecb81] hover:bg-[#0bbd77] text-[#0b0e11] font-black text-xs uppercase rounded transition-all active:scale-[0.98]"
-                    >
-                      Buy Dash
-                    </button>
-                 </div>
-
-                 {/* SELL SECTION */}
-                 <div className="space-y-3">
-                    <div className="flex justify-between text-[11px] font-bold text-zinc-500">
-                       <span>Holdings</span>
-                       <span className="text-white">{holdings.toFixed(4)} <span className="text-zinc-600">DASH</span></span>
-                    </div>
-                    <div className="relative group">
-                       <input 
-                         type="number"
-                         value={sellAmount}
-                         onChange={(e) => setSellAmount(e.target.value)}
-                         placeholder="Sell Amount"
-                         className="w-full h-10 bg-[#2b3139] border border-transparent group-focus-within:border-[#fcd535]/50 rounded px-3 text-sm font-bold outline-none transition-all"
-                       />
-                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-500">DASH</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                       {[25, 50, 75, 100].map(p => (
-                          <button 
-                            key={p} 
-                            onClick={() => setSellAmount((holdings * (p/100)).toFixed(4))}
-                            className="py-1 bg-[#2b3139] hover:bg-[#323a45] rounded text-[9px] font-bold text-zinc-500 transition-colors"
-                          >
-                            {p}%
-                          </button>
-                       ))}
-                    </div>
-                    <button 
-                      onClick={() => handleTrade('SELL')}
-                      className="w-full h-10 bg-[#f6465d] hover:bg-[#eb4057] text-[#0b0e11] font-black text-xs uppercase rounded transition-all active:scale-[0.98]"
-                    >
-                      Sell Dash
-                    </button>
-                 </div>
-
-                 <div className="mt-auto hidden lg:block">
-                    <div className="p-4 rounded bg-[#161a20] border border-zinc-800 space-y-2">
-                       <div className="flex items-center gap-2 text-[10px] font-black text-[#fcd535] italic">
-                          <Activity className="w-3 h-3" /> NODE HEARTBEAT
+              {/* Trading & Monitoring Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Simplified Execution */}
+                <div className="lg:col-span-5 space-y-6">
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                       <h3 className="text-sm font-black uppercase tracking-widest">Execute Node</h3>
+                       <div className="px-3 py-1 bg-[#008CE7]/10 rounded-full">
+                          <span className="text-[10px] font-black text-[#008CE7] animate-pulse">LIVE NODE</span>
                        </div>
-                       <p className="text-[9px] text-zinc-600 leading-normal uppercase font-mono">
-                         Virtual sandbox executing on real-time market nodes. Net settlement is local to profile account.
+                    </div>
+
+                    <div className="space-y-4">
+                       <div className="p-4 bg-black/40 rounded-2xl border border-zinc-800/50">
+                          <p className="text-[10px] text-zinc-600 uppercase font-black mb-2">Buy with USDT</p>
+                          <div className="flex gap-4">
+                             <input 
+                               type="number"
+                               value={buyAmount}
+                               onChange={(e) => setBuyAmount(e.target.value)}
+                               placeholder="USD Amount"
+                               className="flex-1 bg-transparent text-xl font-black focus:outline-none placeholder:text-zinc-800"
+                             />
+                             <button 
+                               onClick={() => handleTrade('BUY')}
+                               className="px-8 py-3 bg-emerald-500 text-black font-black text-xs uppercase italic rounded-xl hover:bg-emerald-400 transition-all active:scale-95"
+                             >
+                               Execute BUY
+                             </button>
+                          </div>
+                       </div>
+
+                       <div className="p-4 bg-black/40 rounded-2xl border border-zinc-800/50">
+                          <p className="text-[10px] text-zinc-600 uppercase font-black mb-2">Liquidate DASH</p>
+                          <div className="flex gap-4">
+                             <input 
+                               type="number"
+                               value={sellAmount}
+                               onChange={(e) => setSellAmount(e.target.value)}
+                               placeholder="DASH Units"
+                               className="flex-1 bg-transparent text-xl font-black focus:outline-none placeholder:text-zinc-800"
+                             />
+                             <button 
+                               onClick={() => handleTrade('SELL')}
+                               className="px-8 py-3 bg-red-500 text-white font-black text-xs uppercase italic rounded-xl hover:bg-red-400 transition-all active:scale-95 shadow-lg shadow-red-500/20"
+                             >
+                               Execute SELL
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="p-5 bg-[#008CE7]/5 rounded-2xl border border-[#008CE7]/20">
+                       <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-black text-zinc-500 uppercase">Current Profit/Loss</span>
+                          <span className="text-[10px] font-mono text-zinc-500 uppercase">Base Market</span>
+                       </div>
+                       <p className={cn(
+                         "text-2xl font-black italic",
+                         ((holdings * (data?.price ?? 0))) > 0 ? "text-emerald-400" : "text-zinc-400"
+                       )}>
+                         +${((holdings * (data?.price ?? 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                        </p>
                     </div>
-                 </div>
+                  </div>
+                </div>
+
+                {/* History Log */}
+                <div className="lg:col-span-7">
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden flex flex-col h-[500px]">
+                    <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+                       <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Transaction Registry</span>
+                       <History className="w-4 h-4 text-zinc-700" />
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-thin">
+                       {tradeHistory.length === 0 ? (
+                         <div className="h-full flex flex-col items-center justify-center p-12 text-center select-none opacity-20">
+                            <Zap className="w-12 h-12 mb-4" />
+                            <p className="text-xs font-black uppercase tracking-widest">No node interactions recorded</p>
+                         </div>
+                       ) : (
+                         <div className="divide-y divide-zinc-800">
+                            {tradeHistory.map((trade) => (
+                              <div key={trade.id} className="p-6 flex items-center justify-between hover:bg-white/5 transition-colors group">
+                                 <div className="flex items-center gap-6">
+                                    <div className={cn(
+                                      "w-12 h-12 rounded-2xl flex items-center justify-center font-black italic border-2 transition-all",
+                                      trade.type === 'BUY' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-red-500/10 border-red-500/20 text-red-500"
+                                    )}>
+                                      {trade.type[0]}
+                                    </div>
+                                    <div>
+                                       <p className="font-black text-sm tracking-tighter uppercase">{trade.type} {trade.amount.toFixed(4)} DASH</p>
+                                       <p className="text-[10px] font-mono text-zinc-600 uppercase mt-1">{format(trade.time, 'HH:mm:ss')}</p>
+                                    </div>
+                                 </div>
+                                 <div className="text-right">
+                                    <p className="text-sm font-black italic">${(trade.price * trade.amount).toFixed(2)}</p>
+                                    <p className="text-[9px] text-zinc-600 font-mono uppercase mt-1">Settled at node ${trade.price.toFixed(2)}</p>
+                                 </div>
+                              </div>
+                            ))}
+                         </div>
+                       )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
