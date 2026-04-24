@@ -149,24 +149,35 @@ export default function App() {
     }
   };
 
-  const handleTrade = (type: 'BUY' | 'SELL') => {
+  const [buyAmount, setBuyAmount] = useState('');
+  const [sellAmount, setSellAmount] = useState('');
+
+  const handleTrade = (type: 'BUY' | 'SELL', customAmount?: number) => {
     if (!data) return;
     const currentPrice = data.price;
     
     if (type === 'BUY') {
-      if (balance <= 0) return toast.error('Insufficient Credits');
-      const amount = balance / currentPrice;
-      setTradeHistory([{ id: Math.random().toString(36), type: 'BUY', price: currentPrice, amount, time: new Date() }, ...tradeHistory]);
-      setHoldings(holdings + amount);
-      setBalance(0);
-      toast.success(`Purchased ${amount.toFixed(4)} DASH`);
+      const spendAmount = customAmount || parseFloat(buyAmount);
+      if (!spendAmount || spendAmount <= 0) return toast.error('Enter valid USDT amount');
+      if (spendAmount > balance) return toast.error('Insufficient Credits');
+      
+      const dashAmount = spendAmount / currentPrice;
+      setTradeHistory([{ id: Math.random().toString(36), type: 'BUY', price: currentPrice, amount: dashAmount, time: new Date() }, ...tradeHistory]);
+      setHoldings(prev => prev + dashAmount);
+      setBalance(prev => prev - spendAmount);
+      setBuyAmount('');
+      toast.success(`Executed BUY for ${dashAmount.toFixed(4)} DASH`);
     } else {
-      if (holdings <= 0) return toast.error('No DASH detected in node');
-      const totalReturn = holdings * currentPrice;
-      setTradeHistory([{ id: Math.random().toString(36), type: 'SELL', price: currentPrice, amount: holdings, time: new Date() }, ...tradeHistory]);
-      setBalance(totalReturn);
-      setHoldings(0);
-      toast.success(`Liquidated for $${totalReturn.toFixed(2)}`);
+      const dashToSell = customAmount || parseFloat(sellAmount);
+      if (!dashToSell || dashToSell <= 0) return toast.error('Enter valid DASH amount');
+      if (dashToSell > holdings) return toast.error('Insufficient DASH holdings');
+      
+      const returnUsdt = dashToSell * currentPrice;
+      setTradeHistory([{ id: Math.random().toString(36), type: 'SELL', price: currentPrice, amount: dashToSell, time: new Date() }, ...tradeHistory]);
+      setBalance(prev => prev + returnUsdt);
+      setHoldings(prev => prev - dashToSell);
+      setSellAmount('');
+      toast.success(`Executed SELL for $${returnUsdt.toFixed(2)}`);
     }
   };
 
@@ -888,75 +899,119 @@ export default function App() {
               {/* Right Sidebar: Execution Panel */}
               <div className="w-full lg:w-80 border-l border-zinc-800 p-6 flex flex-col gap-6 shrink-0 bg-[#1e2329]">
                  <div className="flex border-b border-zinc-800 pb-2 gap-4">
-                    <button className="text-xs font-bold text-[#fcd535]">Market</button>
-                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300">Limit</button>
-                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300">Stop-limit</button>
+                    <button className="text-xs font-bold text-[#fcd535] border-b-2 border-[#fcd535] pb-2">Market</button>
+                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300 transition-colors">Limit</button>
+                    <button className="text-xs font-bold text-zinc-500 hover:text-zinc-300 transition-colors">Stop-limit</button>
                  </div>
 
                  <div className="space-y-4">
                     <div className="flex justify-between text-[11px]">
                        <span className="text-zinc-500">Available</span>
-                       <span className="text-white font-bold">{balance.toFixed(2)} USDT</span>
+                       <span className="text-white font-bold">{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })} USDT</span>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                        <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Price</span>
                           <input 
                             readOnly 
                             value={data?.price.toFixed(2)}
-                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-xs font-bold focus:border-[#fcd535] outline-none" 
+                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-sm font-bold text-zinc-400 focus:border-[#fcd535] outline-none" 
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">USDT</span>
                        </div>
 
-                       <div className="space-y-1">
-                          <button 
-                            onClick={() => handleTrade('BUY')}
-                            className="w-full py-3 bg-[#0ecb81] hover:bg-[#0bbd77] text-white rounded font-bold text-xs uppercase"
-                          >
-                            Buy DASH
-                          </button>
+                       <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Spend</span>
+                          <input 
+                            type="number"
+                            value={buyAmount}
+                            onChange={(e) => setBuyAmount(e.target.value)}
+                            placeholder="Amount in USDT"
+                            className="w-full bg-[#2b3139] border border-zinc-700/50 rounded h-10 px-12 text-right text-sm font-bold text-white focus:border-[#fcd535] outline-none transition-all" 
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">USDT</span>
                        </div>
+
+                       <div className="grid grid-cols-4 gap-1">
+                          {[25, 50, 75, 100].map(p => (
+                             <button 
+                               key={p}
+                               onClick={() => setBuyAmount((balance * (p/100)).toFixed(2))}
+                               className="py-1.5 bg-[#2b3139] hover:bg-[#3b4149] rounded text-[9px] font-bold text-zinc-400 transition-colors"
+                             >
+                               {p}%
+                             </button>
+                          ))}
+                       </div>
+
+                       <button 
+                         onClick={() => handleTrade('BUY')}
+                         className="w-full py-3 bg-[#0ecb81] hover:bg-[#0bbd77] text-[#0b0e11] font-black text-xs uppercase transition-all active:scale-[0.98] mt-2 rounded"
+                       >
+                         Buy DASH
+                       </button>
                     </div>
                  </div>
 
-                 <div className="space-y-4 mt-4">
+                 <div className="space-y-4 pt-4 border-t border-zinc-800">
                     <div className="flex justify-between text-[11px]">
                        <span className="text-zinc-500">Available</span>
                        <span className="text-white font-bold">{holdings.toFixed(4)} DASH</span>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
+                       <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Price</span>
+                          <input 
+                            readOnly 
+                            value={data?.price.toFixed(2)}
+                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-sm font-bold text-zinc-400 focus:border-[#fcd535] outline-none" 
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">USDT</span>
+                       </div>
+
                        <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-500">Amount</span>
                           <input 
-                            readOnly 
-                            value={holdings.toFixed(4)}
-                            className="w-full bg-[#2b3139] border border-transparent rounded h-10 px-12 text-right text-xs font-bold focus:border-[#fcd535] outline-none" 
+                            type="number"
+                            value={sellAmount}
+                            onChange={(e) => setSellAmount(e.target.value)}
+                            placeholder="Amount in DASH"
+                            className="w-full bg-[#2b3139] border border-zinc-700/50 rounded h-10 px-12 text-right text-sm font-bold text-white focus:border-[#fcd535] outline-none transition-all" 
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-300">DASH</span>
                        </div>
 
-                       <div className="space-y-1">
-                          <button 
-                            onClick={() => handleTrade('SELL')}
-                            className="w-full py-3 bg-[#f6465d] hover:bg-[#eb4057] text-white rounded font-bold text-xs uppercase"
-                          >
-                            Sell DASH
-                          </button>
+                       <div className="grid grid-cols-4 gap-1">
+                          {[25, 50, 75, 100].map(p => (
+                             <button 
+                               key={p}
+                               onClick={() => setSellAmount((holdings * (p/100)).toFixed(4))}
+                               className="py-1.5 bg-[#2b3139] hover:bg-[#3b4149] rounded text-[9px] font-bold text-zinc-400 transition-colors"
+                             >
+                               {p}%
+                             </button>
+                          ))}
                        </div>
+
+                       <button 
+                         onClick={() => handleTrade('SELL')}
+                         className="w-full py-3 bg-[#f6465d] hover:bg-[#eb4057] text-[#0b0e11] font-black text-xs uppercase transition-all active:scale-[0.98] mt-2 rounded"
+                       >
+                         Sell DASH
+                       </button>
                     </div>
                  </div>
 
-                 <div className="mt-auto pt-6 border-t border-zinc-800 space-y-4">
+                 <div className="mt-auto pt-6 border-t border-zinc-800 space-y-3">
                     <div className="flex items-center gap-2">
                        <ShieldAlert className="w-4 h-4 text-[#fcd535]" />
-                       <span className="text-[10px] text-zinc-500 italic">Paper Trading Mode Active</span>
+                       <span className="text-[10px] text-zinc-500 italic">Paper Trading Mode</span>
                     </div>
                     <div className="p-3 bg-[#fcd535]/5 rounded border border-[#fcd535]/10">
-                       <p className="text-[9px] text-[#fcd535] leading-relaxed">
-                         Global market node execution simulation. All trades are finalized in local node memory for strategic analysis.
+                       <p className="text-[9px] text-[#fcd535] leading-relaxed font-medium">
+                         Your trades are executed against live node data but finalized in a local virtual sandbox for strategy testing.
                        </p>
                     </div>
                  </div>
